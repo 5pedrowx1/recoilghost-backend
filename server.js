@@ -1,9 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const path = require('path');
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+
+initializeApp({
+  credential: cert(serviceAccount)
+});
+
+const db = getFirestore();
 
 const app = express();
-const YOUR_DOMAIN = 'https://recoilghost-backend.onrender.com'; // <- frontend
+const YOUR_DOMAIN = 'https://r6-aim-keys.web.app';
 
 app.use(cors());
 app.use(express.json());
@@ -57,6 +68,27 @@ app.post('/create-checkout-session', async (req, res) => {
   } catch (err) {
     console.error('Erro ao criar sessão:', err);
     res.status(500).json({ error: "Erro ao processar o pagamento" });
+  }
+});
+
+app.get('/get-available-key', async (req, res) => {
+  try {
+    const keysSnapshot = await db.collection('keys')
+      .where('used_by', '==', '')
+      .limit(1)
+      .get();
+
+    if (keysSnapshot.empty) {
+      return res.json({ key: null });
+    }
+
+    const doc = keysSnapshot.docs[0];
+    const key = doc.id;
+
+    res.json({ key });
+  } catch (error) {
+    console.error('Erro ao buscar key:', error);
+    res.status(500).json({ key: null });
   }
 });
 
