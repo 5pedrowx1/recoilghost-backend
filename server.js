@@ -7,11 +7,9 @@ const crypto = require('crypto');
 const path = require('path');
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-
 initializeApp({
   credential: cert(serviceAccount)
 });
-
 const db = getFirestore();
 
 const app = express();
@@ -20,31 +18,32 @@ const YOUR_DOMAIN = 'https://r6-aim-keys.web.app';
 app.use(cors());
 app.use(express.json());
 
+/**
+ * Cria uma sessão de checkout com Stripe
+ */
 app.post('/create-checkout-session', async (req, res) => {
   const { plan } = req.query;
-
   let priceData;
-
   switch (plan) {
     case "tester":
       priceData = {
         currency: 'usd',
         product_data: { name: 'Plano Tester' },
-        unit_amount: 0,
+        unit_amount: 0, // Por exemplo, US$5.00 → 500 centavos
       };
       break;
     case "enthusiast":
       priceData = {
         currency: 'usd',
         product_data: { name: 'Plano Enthusiast' },
-        unit_amount: 1500,
+        unit_amount: 1500, // US$15.00
       };
       break;
     case "specialist":
       priceData = {
         currency: 'usd',
         product_data: { name: 'Plano Specialist' },
-        unit_amount: 2000,
+        unit_amount: 2000, // US$20.00
       };
       break;
     default:
@@ -54,30 +53,24 @@ app.post('/create-checkout-session', async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: priceData,
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price_data: priceData, quantity: 1 }],
       mode: 'payment',
       success_url: `${YOUR_DOMAIN}/success.html`,
       cancel_url: `${YOUR_DOMAIN}/cancel.html`,
     });
-
     res.json({ sessionUrl: session.url });
   } catch (err) {
     console.error('Erro ao criar sessão:', err);
-    res.status(500).json({ error: "Erro ao processar o pagamento" });
+    res.status(500).json({ error: "Error processing payment" });
   }
 });
 
 app.post('/generate-key', async (req, res) => {
   const { plan } = req.query;
   if (!plan) {
-    return res.status(400).json({ error: "O parâmetro 'plan' é obrigatório" });
+    return res.status(400).json({ error: "The 'plan' parameter is required" });
   }
-
+  
   const now = new Date();
   let expiresAt;
   switch (plan) {
@@ -94,7 +87,7 @@ app.post('/generate-key', async (req, res) => {
       expiresAt.setFullYear(expiresAt.getFullYear() + 10);
       break;
     default:
-      return res.status(400).json({ error: "Plano inválido" });
+      return res.status(400).json({ error: "Invalid plan" });
   }
 
   const rawBytes = crypto.randomBytes(16);
@@ -109,7 +102,6 @@ app.post('/generate-key', async (req, res) => {
       expires_at: Timestamp.fromDate(expiresAt),
       used_by: ""
     });
-
     res.json({
       success: true,
       key: keyString,
@@ -118,7 +110,7 @@ app.post('/generate-key', async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao gerar key:', error);
-    res.status(500).json({ error: "Erro ao gerar key." });
+    res.status(500).json({ error: "Error generating key." });
   }
 });
 
