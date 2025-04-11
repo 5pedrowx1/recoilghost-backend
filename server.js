@@ -3,7 +3,7 @@ const cors = require('cors');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
-const YOUR_DOMAIN = 'https://r6-aim-keys.web.app'; // <- frontend
+const YOUR_DOMAIN = 'https://recoilghost-backend.onrender.com'; // <- frontend
 
 app.use(cors());
 app.use(express.json());
