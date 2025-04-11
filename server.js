@@ -3,6 +3,7 @@ const cors = require('cors');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const crypto = require('crypto');
 const path = require('path');
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
@@ -71,7 +72,7 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-app.get('/get-available-key', async (req, res) => {
+app.post('/generate-key', async (req, res) => {
   const { plan } = req.query;
   if (!plan) {
     return res.status(400).json({ error: "O parâmetro 'plan' é obrigatório" });
@@ -79,7 +80,6 @@ app.get('/get-available-key', async (req, res) => {
 
   const now = new Date();
   let expiresAt;
-
   switch (plan) {
     case "tester":
       expiresAt = new Date(now);
@@ -97,27 +97,28 @@ app.get('/get-available-key', async (req, res) => {
       return res.status(400).json({ error: "Plano inválido" });
   }
 
+  const rawBytes = crypto.randomBytes(16);
+  let keyString = rawBytes.toString('hex').toUpperCase();
+  keyString = `${keyString.substring(0, 8)}-${keyString.substring(8, 16)}-${keyString.substring(16, 24)}-${keyString.substring(24, 32)}`;
+
   try {
-    const keysSnapshot = await db.collection('keys')
-      .where('used_by', '==', '')
-      .limit(1)
-      .get();
-
-    if (keysSnapshot.empty) {
-      return res.json({ key: null });
-    }
-
-    const doc = keysSnapshot.docs[0];
-    const key = doc.id;
-
-    await doc.ref.update({
-      expires_at: Timestamp.fromDate(expiresAt)
+    await db.collection('keys').doc(keyString).set({
+      key: keyString,
+      plan: plan,
+      created_at: Timestamp.now(),
+      expires_at: Timestamp.fromDate(expiresAt),
+      used_by: ""
     });
 
-    res.json({ key, expires_at: expiresAt });
+    res.json({
+      success: true,
+      key: keyString,
+      plan: plan,
+      expires_at: expiresAt.toISOString()
+    });
   } catch (error) {
-    console.error('Erro ao buscar key:', error);
-    res.status(500).json({ key: null });
+    console.error('Erro ao gerar key:', error);
+    res.status(500).json({ error: "Erro ao gerar key." });
   }
 });
 
