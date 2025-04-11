@@ -18,7 +18,7 @@ app.post('/create-checkout-session', async (req, res) => {
       priceData = {
         currency: 'usd',
         product_data: { name: 'Plano Tester' },
-        unit_amount: 500,
+        unit_amount: 0,
       };
       break;
     case "enthusiast":
