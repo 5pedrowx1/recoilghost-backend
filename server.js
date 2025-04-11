@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const path = require('path');
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
@@ -72,6 +72,31 @@ app.post('/create-checkout-session', async (req, res) => {
 });
 
 app.get('/get-available-key', async (req, res) => {
+  const { plan } = req.query;
+  if (!plan) {
+    return res.status(400).json({ error: "O parâmetro 'plan' é obrigatório" });
+  }
+
+  const now = new Date();
+  let expiresAt;
+
+  switch (plan) {
+    case "tester":
+      expiresAt = new Date(now);
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
+      break;
+    case "enthusiast":
+      expiresAt = new Date(now);
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      break;
+    case "specialist":
+      expiresAt = new Date(now);
+      expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+      break;
+    default:
+      return res.status(400).json({ error: "Plano inválido" });
+  }
+
   try {
     const keysSnapshot = await db.collection('keys')
       .where('used_by', '==', '')
@@ -85,7 +110,11 @@ app.get('/get-available-key', async (req, res) => {
     const doc = keysSnapshot.docs[0];
     const key = doc.id;
 
-    res.json({ key });
+    await doc.ref.update({
+      expires_at: Timestamp.fromDate(expiresAt)
+    });
+
+    res.json({ key, expires_at: expiresAt });
   } catch (error) {
     console.error('Erro ao buscar key:', error);
     res.status(500).json({ key: null });
