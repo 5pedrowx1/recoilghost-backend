@@ -19,7 +19,8 @@ app.use(cors());
 app.use(express.json());
 
 /**
- * Cria uma sessão de checkout com Stripe
+ * Cria uma sessão de checkout com Stripe.
+ * O success_url inclui o parâmetro "plan" para uso na página de sucesso.
  */
 app.post('/create-checkout-session', async (req, res) => {
   const { plan } = req.query;
@@ -29,7 +30,7 @@ app.post('/create-checkout-session', async (req, res) => {
       priceData = {
         currency: 'usd',
         product_data: { name: 'Plano Tester' },
-        unit_amount: 0, // Por exemplo, US$5.00 → 500 centavos
+        unit_amount: 500, // US$5.00 (em centavos)
       };
       break;
     case "enthusiast":
@@ -55,7 +56,8 @@ app.post('/create-checkout-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: [{ price_data: priceData, quantity: 1 }],
       mode: 'payment',
-      success_url: `${YOUR_DOMAIN}/success.html`,
+      // Inclui o plano na URL de sucesso para que possamos recuperá-lo na página success.html
+      success_url: `${YOUR_DOMAIN}/success.html?plan=${plan}`,
       cancel_url: `${YOUR_DOMAIN}/cancel.html`,
     });
     res.json({ sessionUrl: session.url });
@@ -65,6 +67,9 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
+/**
+ * Gera uma key no Firestore com base no plano escolhido.
+ */
 app.post('/generate-key', async (req, res) => {
   const { plan } = req.query;
   if (!plan) {
