@@ -1,9 +1,11 @@
 const express = require('express');
+const cors = require('cors');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
-const YOUR_DOMAIN = 'https://r6-aim-keys.web.app'; 
+const YOUR_DOMAIN = 'https://r6-aim-keys.web.app'; // <- frontend
 
+app.use(cors());
 app.use(express.json());
 
 app.post('/create-checkout-session', async (req, res) => {
@@ -58,4 +60,5 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-app.listen(4242, () => console.log('Servidor rodando na porta 4242'));
+const PORT = process.env.PORT || 4242;
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
