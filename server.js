@@ -30,7 +30,7 @@ app.post('/create-checkout-session', async (req, res) => {
       priceData = {
         currency: 'usd',
         product_data: { name: 'Plano Tester' },
-        unit_amount: 0, // US$5.00 (em centavos)
+        unit_amount: 500, // US$5.00 (em centavos)
       };
       break;
     case "enthusiast":
